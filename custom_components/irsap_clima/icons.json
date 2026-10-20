@@ -50,6 +50,16 @@
           "off": "mdi:lock-open-variant"
         }
       }
+    },
+    "select": {
+      "season": {
+        "default": "mdi:sun-snowflake-variant",
+        "state": {
+          "winter": "mdi:snowflake-off",
+          "summer": "mdi:snowflake",
+          "auto": "mdi:sun-snowflake-variant"
+        }
+      }
     }
   }
 }

@@ -115,6 +115,16 @@
       "keyboard_lock": {
         "name": "Blocco tastiera"
       }
+    },
+    "select": {
+      "season": {
+        "name": "Stagione",
+        "state": {
+          "winter": "Inverno (riscaldamento)",
+          "summer": "Estate (raffrescamento)",
+          "auto": "Automatica"
+        }
+      }
     }
   }
 }

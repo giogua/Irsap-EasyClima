@@ -115,6 +115,16 @@
       "keyboard_lock": {
         "name": "Keyboard lock"
       }
+    },
+    "select": {
+      "season": {
+        "name": "Season",
+        "state": {
+          "winter": "Winter (heating)",
+          "summer": "Summer (cooling)",
+          "auto": "Automatic"
+        }
+      }
     }
   }
 }

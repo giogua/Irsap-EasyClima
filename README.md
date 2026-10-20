@@ -21,6 +21,7 @@ Each unit becomes **one device** with a thermostat entity and its sensors.
 | sensor | Modbus registers | diagnostic, disabled by default: raw values of all polled registers |
 | binary_sensor | Heat request (BOILER), Cooling request (CHILLER), Water valve, Alarm, Filter maintenance | |
 | binary_sensor | Antifreeze, Water temperature not suitable | diagnostic |
+| select | Season (winter / summer / automatic) | config: changes the season without switching the unit on |
 | switch | Keyboard lock | config, disabled by default |
 
 Entity names are translated (English, Italian).

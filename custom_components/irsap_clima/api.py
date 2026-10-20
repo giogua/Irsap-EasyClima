@@ -110,6 +110,13 @@ def _signed(value: int) -> int:
     return value - 0x10000 if value & 0x8000 else value
 
 
+def _probe(value: float | None) -> float | None:
+    """Disconnected probes read as large negative values (e.g. -51.0)."""
+    if value is None or value < -40 or value > 120:
+        return None
+    return value
+
+
 @dataclass
 class ClimaData:
     """Snapshot of the unit."""
@@ -131,21 +138,21 @@ class ClimaData:
         """Room/return air temperature."""
         if self._flag(REG_ALARMS, 1 << 1):
             return None  # air probe alarm
-        return self._temp(REG_AIR_TEMP)
+        return _probe(self._temp(REG_AIR_TEMP))
 
     @property
     def water_temperature(self) -> float | None:
         """Water temperature on probe H2 (None if the probe is absent)."""
         if self._flag(REG_STAT, STAT_H2_ABSENT):
             return None
-        return self._temp(REG_WATER_TEMP_H2)
+        return _probe(self._temp(REG_WATER_TEMP_H2))
 
     @property
     def water_temperature_h4(self) -> float | None:
         """Water temperature on probe H4 (4-pipe units)."""
-        if self._flag(REG_STAT, STAT_H4_ABSENT) is not False:
+        if self._flag(REG_STAT, STAT_H4_ABSENT):
             return None
-        return self._temp(REG_WATER_TEMP_H4)
+        return _probe(self._temp(REG_WATER_TEMP_H4))
 
     @property
     def setpoint(self) -> float | None:
@@ -154,7 +161,9 @@ class ClimaData:
 
     @property
     def setpoint_effective(self) -> float | None:
-        """Set point actually used by the regulation."""
+        """Set point actually used by the regulation (None in standby)."""
+        if self.is_on is False:
+            return None
         return self._temp(REG_SETPOINT_REAL)
 
     @property
