@@ -1,0 +1,120 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Irsap CLIMA",
+        "description": "Gateway Modbus TCP collegato alla porta RS485 dell'unità CLIMA (jumper su RTU).",
+        "data": {
+          "host": "Indirizzo IP del gateway",
+          "port": "Porta",
+          "unit_id": "Indirizzo Modbus dell'unità",
+          "name": "Nome"
+        },
+        "data_description": {
+          "port": "502 per il Modbus TCP standard; verifica la configurazione del gateway (es. 4196 sui Waveshare).",
+          "unit_id": "Predefinito 1"
+        }
+      },
+      "reconfigure": {
+        "title": "Modifica connessione",
+        "data": {
+          "host": "Indirizzo IP del gateway",
+          "port": "Porta",
+          "unit_id": "Indirizzo Modbus dell'unità"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossibile connettersi al gateway.",
+      "no_response": "Il gateway risponde ma l'unità no: controlla i fili A/B, il jumper su RTU, la seriale (9600 8N1) e l'indirizzo dell'unità.",
+      "unknown": "Errore imprevisto, vedi il log."
+    },
+    "abort": {
+      "already_configured": "Questa unità è già configurata.",
+      "reconfigure_successful": "Connessione aggiornata."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aggiornamento",
+        "data": {
+          "scan_interval": "Intervallo di aggiornamento (s)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "clima": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "auto": "Automatico",
+              "silent": "Silenzioso",
+              "night": "Notturno",
+              "max": "Massimo"
+            }
+          },
+          "effective_setpoint": {
+            "name": "Setpoint effettivo"
+          }
+        }
+      }
+    },
+    "sensor": {
+      "air_temperature": {
+        "name": "Temperatura aria"
+      },
+      "water_temperature": {
+        "name": "Temperatura acqua"
+      },
+      "water_temperature_h4": {
+        "name": "Temperatura acqua H4"
+      },
+      "effective_setpoint": {
+        "name": "Setpoint effettivo"
+      },
+      "fan_speed": {
+        "name": "Velocità ventilatore"
+      },
+      "fan_hours": {
+        "name": "Ore di funzionamento ventilatore"
+      },
+      "alarms": {
+        "name": "Allarmi"
+      },
+      "registers": {
+        "name": "Registri Modbus"
+      }
+    },
+    "binary_sensor": {
+      "heat_request": {
+        "name": "Richiesta caldo"
+      },
+      "cooling_request": {
+        "name": "Richiesta freddo"
+      },
+      "water_valve": {
+        "name": "Valvola acqua"
+      },
+      "alarm": {
+        "name": "Allarme"
+      },
+      "filter": {
+        "name": "Manutenzione filtro"
+      },
+      "antifreeze": {
+        "name": "Antigelo"
+      },
+      "water_not_suitable": {
+        "name": "Temperatura acqua non idonea"
+      }
+    },
+    "switch": {
+      "keyboard_lock": {
+        "name": "Blocco tastiera"
+      }
+    }
+  }
+}

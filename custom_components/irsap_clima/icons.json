@@ -1,0 +1,55 @@
+{
+  "entity": {
+    "climate": {
+      "clima": {
+        "state_attributes": {
+          "fan_mode": {
+            "default": "mdi:fan",
+            "state": {
+              "auto": "mdi:fan-auto",
+              "silent": "mdi:fan-speed-1",
+              "night": "mdi:weather-night",
+              "max": "mdi:fan-speed-3"
+            }
+          }
+        }
+      }
+    },
+    "sensor": {
+      "fan_speed": {
+        "default": "mdi:fan"
+      },
+      "fan_hours": {
+        "default": "mdi:timer-cog-outline"
+      },
+      "alarms": {
+        "default": "mdi:alert-circle-outline"
+      },
+      "registers": {
+        "default": "mdi:memory"
+      },
+      "water_temperature": {
+        "default": "mdi:coolant-temperature"
+      }
+    },
+    "binary_sensor": {
+      "water_valve": {
+        "default": "mdi:valve"
+      },
+      "filter": {
+        "default": "mdi:air-filter"
+      },
+      "antifreeze": {
+        "default": "mdi:snowflake-melt"
+      }
+    },
+    "switch": {
+      "keyboard_lock": {
+        "default": "mdi:lock",
+        "state": {
+          "off": "mdi:lock-open-variant"
+        }
+      }
+    }
+  }
+}

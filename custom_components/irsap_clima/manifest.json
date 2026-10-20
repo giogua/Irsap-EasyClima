@@ -1,0 +1,12 @@
+{
+  "domain": "irsap_clima",
+  "name": "Irsap EasyClima (CLIMA)",
+  "codeowners": ["@giogua"],
+  "config_flow": true,
+  "documentation": "https://github.com/giogua/Irsap-EasyClima",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/giogua/Irsap-EasyClima/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

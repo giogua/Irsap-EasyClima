@@ -1,0 +1,120 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Irsap CLIMA",
+        "description": "Modbus TCP gateway connected to the RS485 port of the CLIMA unit (jumper on RTU).",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "Port",
+          "unit_id": "Modbus unit id",
+          "name": "Name"
+        },
+        "data_description": {
+          "port": "502 for standard Modbus TCP; check the gateway settings (e.g. 4196 on Waveshare).",
+          "unit_id": "Default 1"
+        }
+      },
+      "reconfigure": {
+        "title": "Change connection",
+        "data": {
+          "host": "Gateway IP address",
+          "port": "Port",
+          "unit_id": "Modbus unit id"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the gateway.",
+      "no_response": "The gateway answers but the unit does not: check A/B wiring, the RTU jumper, serial settings (9600 8N1) and the unit id.",
+      "unknown": "Unexpected error, see the log."
+    },
+    "abort": {
+      "already_configured": "This unit is already configured.",
+      "reconfigure_successful": "Connection updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling",
+        "data": {
+          "scan_interval": "Refresh interval (s)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "clima": {
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "auto": "Auto",
+              "silent": "Silent",
+              "night": "Night",
+              "max": "Maximum"
+            }
+          },
+          "effective_setpoint": {
+            "name": "Effective set point"
+          }
+        }
+      }
+    },
+    "sensor": {
+      "air_temperature": {
+        "name": "Air temperature"
+      },
+      "water_temperature": {
+        "name": "Water temperature"
+      },
+      "water_temperature_h4": {
+        "name": "Water temperature H4"
+      },
+      "effective_setpoint": {
+        "name": "Effective set point"
+      },
+      "fan_speed": {
+        "name": "Fan speed"
+      },
+      "fan_hours": {
+        "name": "Fan operating hours"
+      },
+      "alarms": {
+        "name": "Alarms"
+      },
+      "registers": {
+        "name": "Modbus registers"
+      }
+    },
+    "binary_sensor": {
+      "heat_request": {
+        "name": "Heat request"
+      },
+      "cooling_request": {
+        "name": "Cooling request"
+      },
+      "water_valve": {
+        "name": "Water valve"
+      },
+      "alarm": {
+        "name": "Alarm"
+      },
+      "filter": {
+        "name": "Filter maintenance"
+      },
+      "antifreeze": {
+        "name": "Antifreeze"
+      },
+      "water_not_suitable": {
+        "name": "Water temperature not suitable"
+      }
+    },
+    "switch": {
+      "keyboard_lock": {
+        "name": "Keyboard lock"
+      }
+    }
+  }
+}
