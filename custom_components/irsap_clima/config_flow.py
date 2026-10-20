@@ -31,9 +31,11 @@ async def _validate(host: str, port: int, unit: int) -> dict[str, str]:
     client = ClimaClient(ModbusTcpClient(host, port, retries=1), unit)
     try:
         await client.async_validate()
-    except ModbusConnectionError:
+    except ModbusConnectionError as err:
+        _LOGGER.warning("CLIMA setup: %s", err)
         return {"base": "cannot_connect"}
-    except ModbusError:
+    except ModbusError as err:
+        _LOGGER.warning("CLIMA setup: %s", err)
         return {"base": "no_response"}
     except Exception:  # noqa: BLE001
         _LOGGER.exception("Unexpected error validating %s:%s", host, port)

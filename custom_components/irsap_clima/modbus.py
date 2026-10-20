@@ -35,6 +35,10 @@ class ModbusConnectionError(ModbusError):
     """The gateway cannot be reached or did not answer."""
 
 
+class ModbusTimeoutError(ModbusError):
+    """Connected to the gateway, but no (valid) answer from the unit."""
+
+
 class ModbusExceptionResponse(ModbusError):
     """The device answered with a Modbus exception."""
 
@@ -90,9 +94,11 @@ class ModbusTcpClient:
     async def _transaction(self, unit: int, pdu: bytes) -> bytes:
         """Send a PDU and return the response PDU (without unit id)."""
         last_err: Exception | None = None
+        connected = False
         for attempt in range(self._retries + 1):
             if self._writer is None:
                 await self._connect()
+            connected = True
             assert self._reader is not None and self._writer is not None
             self._tid = (self._tid + 1) & 0xFFFF
             frame = struct.pack(">HHHB", self._tid, 0, len(pdu) + 1, unit) + pdu
@@ -120,8 +126,10 @@ class ModbusTcpClient:
             if body[0] & 0x80:
                 raise ModbusExceptionResponse(body[0] & 0x7F, body[1])
             return body
-        raise ModbusConnectionError(
-            f"No answer from unit {unit} via {self.host}:{self.port}: {last_err}"
+        error = ModbusTimeoutError if connected else ModbusConnectionError
+        raise error(
+            f"No answer from unit {unit} via {self.host}:{self.port}: "
+            f"{type(last_err).__name__} {last_err}"
         )
 
     async def read_holding(self, unit: int, address: int, count: int = 1) -> list[int]:
