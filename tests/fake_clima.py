@@ -28,6 +28,11 @@ class FakeClima:
             233: 3,
         }
         self.writes: list[tuple[int, int]] = []
+        self.connections = 0
+        self.drop_next = 0  # number of requests to leave unanswered
+        self.late_reply = (
+            False  # answer dropped requests late (after the client timeout)
+        )
         self.server: asyncio.base_events.Server | None = None
         self.port = 0
         self._writers: set[asyncio.StreamWriter] = set()
@@ -47,6 +52,7 @@ class FakeClima:
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         self._writers.add(writer)
+        self.connections += 1
         try:
             while True:
                 header = await reader.readexactly(7)
@@ -56,6 +62,11 @@ class FakeClima:
                     resp = bytes([pdu[0] | 0x80, 11])
                 else:
                     resp = self._process(pdu)
+                if self.drop_next:
+                    self.drop_next -= 1
+                    if not self.late_reply:
+                        continue
+                    await asyncio.sleep(1.5)
                 writer.write(struct.pack(">HHHB", tid, 0, len(resp) + 1, unit) + resp)
                 await writer.drain()
         except (asyncio.IncompleteReadError, ConnectionError):

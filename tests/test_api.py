@@ -114,3 +114,26 @@ async def test_reconnect_after_server_restart(env):
     await client.modbus.close()
     fake.regs[0] = 199
     assert (await client.async_get_data()).air_temperature == 19.9
+
+
+async def test_timeout_keeps_connection():
+    fake = FakeClima()
+    await fake.start()
+    client = api.ClimaClient(
+        modbus.ModbusTcpClient("127.0.0.1", fake.port, timeout=1), 1
+    )
+    try:
+        await client.async_get_data()
+        fake.drop_next = 1
+        data = await client.async_get_data()
+        assert data.air_temperature == 21.5
+        fake.drop_next = 1
+        fake.late_reply = True
+        fake.regs[0] = 230
+        data = await client.async_get_data()
+        assert data.air_temperature == 23.0
+        assert data.setpoint == 21.0  # no response mixed up after the late answer
+        assert fake.connections == 1
+    finally:
+        await client.async_close()
+        await fake.stop()

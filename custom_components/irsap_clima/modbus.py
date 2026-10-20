@@ -2,6 +2,9 @@
 
 The unit is reached through an RS485 <-> Ethernet gateway running in
 "Modbus TCP <-> RTU" mode, so plain Modbus TCP framing (MBAP header) is used.
+The connection is kept open and is closed only on socket errors: cheap
+gateways often accept a single client and refuse new connections for minutes
+after one is closed.
 Implemented here instead of depending on pymodbus, whose API changes between
 the versions pinned by different Home Assistant releases.
 """
@@ -70,8 +73,24 @@ class ModbusTcpClient:
         self._writer: asyncio.StreamWriter | None = None
         self._tid = 0
         self._lock = asyncio.Lock()
+        self._dirty = False  # a request timed out: late bytes may be pending
+
+    async def _drain(self) -> None:
+        """Discard bytes left over by a request that timed out."""
+        assert self._reader is not None
+        while True:
+            try:
+                data = await asyncio.wait_for(self._reader.read(512), 0.2)
+            except TimeoutError:
+                break
+            if not data:  # connection closed by the gateway
+                await self.close()
+                break
+            _LOGGER.debug("Discarded %s stale bytes", len(data))
+        self._dirty = False
 
     async def _connect(self) -> None:
+        _LOGGER.debug("Connecting to %s:%s", self.host, self.port)
         try:
             self._reader, self._writer = await asyncio.wait_for(
                 asyncio.open_connection(self.host, self.port), self._timeout
@@ -96,6 +115,8 @@ class ModbusTcpClient:
         last_err: Exception | None = None
         connected = False
         for attempt in range(self._retries + 1):
+            if self._writer is not None and self._dirty:
+                await self._drain()
             if self._writer is None:
                 await self._connect()
             connected = True
@@ -116,10 +137,21 @@ class ModbusTcpClient:
                     if tid == self._tid and proto == 0:
                         break
                     _LOGGER.debug("Discarding stale Modbus response tid=%s", tid)
-            except (OSError, TimeoutError, asyncio.IncompleteReadError) as err:
+            except TimeoutError as err:
+                # The gateway is still connected but the unit did not answer
+                # (or answered late).  Keep the socket: some gateways accept a
+                # single client and refuse new connections for minutes after
+                # one is closed.  A late answer is discarded by its tid.
+                last_err = err
+                self._dirty = True
+                _LOGGER.debug(
+                    "Modbus attempt %s timed out (unit %s)", attempt + 1, unit
+                )
+                continue
+            except (OSError, asyncio.IncompleteReadError) as err:
                 last_err = err
                 await self.close()
-                _LOGGER.debug("Modbus attempt %s failed: %s", attempt + 1, err)
+                _LOGGER.debug("Modbus attempt %s failed: %r", attempt + 1, err)
                 continue
             if self._delay:
                 await asyncio.sleep(self._delay)
