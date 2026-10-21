@@ -109,6 +109,12 @@
       },
       "water_not_suitable": {
         "name": "Temperatura acqua non idonea"
+      },
+      "running": {
+        "name": "In funzione"
+      },
+      "forced_off": {
+        "name": "Spegnimento forzato (supervisore)"
       }
     },
     "switch": {

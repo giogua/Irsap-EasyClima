@@ -137,3 +137,14 @@ async def test_timeout_keeps_connection():
     finally:
         await client.async_close()
         await fake.stop()
+
+
+async def test_forced_off(env):
+    fake, client = env
+    fake.regs[247] = 0b10
+    fake.regs[104] |= 1 << 11
+    data = await client.async_get_data()
+    assert data.forced_off is True
+    assert data.unit_standby is True
+    await client.async_clear_forced_off()
+    assert fake.regs[247] == 0

@@ -28,6 +28,19 @@ class IrsapClimaBinaryDescription(BinarySensorEntityDescription):
 
 BINARY_SENSORS: tuple[IrsapClimaBinaryDescription, ...] = (
     IrsapClimaBinaryDescription(
+        key="running",
+        translation_key="running",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        value_fn=lambda d: None if d.unit_standby is None else not d.unit_standby,
+    ),
+    IrsapClimaBinaryDescription(
+        key="forced_off",
+        translation_key="forced_off",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda d: d.forced_off,
+    ),
+    IrsapClimaBinaryDescription(
         key="heat_request",
         translation_key="heat_request",
         device_class=BinarySensorDeviceClass.HEAT,

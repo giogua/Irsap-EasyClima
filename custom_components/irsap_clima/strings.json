@@ -109,6 +109,12 @@
       },
       "water_not_suitable": {
         "name": "Water temperature not suitable"
+      },
+      "running": {
+        "name": "Running"
+      },
+      "forced_off": {
+        "name": "Forced off (supervisor)"
       }
     },
     "switch": {

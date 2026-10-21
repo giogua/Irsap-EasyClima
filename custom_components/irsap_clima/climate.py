@@ -91,7 +91,7 @@ class IrsapClimaThermostat(IrsapClimaEntity, ClimateEntity):
         data = self.coordinator.data
         if data.is_on is None:
             return None
-        if not data.is_on:
+        if not data.is_on or data.unit_standby:
             return HVACAction.OFF
         if not data.fan_speed:
             return HVACAction.IDLE
@@ -109,7 +109,12 @@ class IrsapClimaThermostat(IrsapClimaEntity, ClimateEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Effective set point (may differ from the configured one)."""
-        return {"effective_setpoint": self.coordinator.data.setpoint_effective}
+        data = self.coordinator.data
+        return {
+            "effective_setpoint": data.setpoint_effective,
+            "unit_standby": data.unit_standby,
+            "forced_off": data.forced_off,
+        }
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Switch off, or select the season and switch on."""

@@ -21,7 +21,16 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api import REG_ALARMS, REG_OUT, REG_PRG, REG_SEASON, REG_STAT, ClimaData
+from .api import (
+    REG_ALARMS,
+    REG_OUT,
+    REG_PRESENCE,
+    REG_PRG,
+    REG_SEASON,
+    REG_STAT,
+    REG_WEB,
+    ClimaData,
+)
 from .coordinator import IrsapClimaConfigEntry
 from .entity import IrsapClimaEntity
 
@@ -96,6 +105,8 @@ SENSORS: tuple[IrsapClimaSensorDescription, ...] = (
             "PRG_201": f"{d.raw.get(REG_PRG, 0):#06x}",
             "OUT_9": f"{d.raw.get(REG_OUT, 0):#06x}",
             "SEASON_233": d.raw.get(REG_SEASON),
+            "PRESENCE_209": d.raw.get(REG_PRESENCE),
+            "WEB_247": f"{d.raw[REG_WEB]:#06x}" if REG_WEB in d.raw else None,
             "raw": {str(k): v for k, v in sorted(d.raw.items())},
         },
     ),

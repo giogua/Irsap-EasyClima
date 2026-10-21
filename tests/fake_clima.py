@@ -26,6 +26,8 @@ class FakeClima:
             222: 1234,
             231: 210,
             233: 3,
+            209: 0,
+            247: 0,
         }
         self.writes: list[tuple[int, int]] = []
         self.connections = 0

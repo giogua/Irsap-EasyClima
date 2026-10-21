@@ -36,6 +36,8 @@ REG_SP_MAX = 203  # x0.1 °C
 REG_FAN_HOURS = 222  # fan working hours
 REG_SETPOINT = 231  # x0.1 °C, absolute set point
 REG_SEASON = 233  # 0 auto, 3 winter (heating), 5 summer (cooling)
+REG_PRESENCE = 209  # E_SAVING: presence contact offset / stand-by, x0.1 K
+REG_WEB = 247  # supervisor restriction flags (bit field)
 
 POLLED_REGISTERS = (
     REG_AIR_TEMP,
@@ -52,6 +54,8 @@ POLLED_REGISTERS = (
     REG_FAN_HOURS,
     REG_SETPOINT,
     REG_SEASON,
+    REG_PRESENCE,
+    REG_WEB,
 )
 
 # PRG (201)
@@ -64,6 +68,16 @@ PROGRAMS = {0: "auto", 1: "silent", 2: "night", 3: "max"}
 SEASON_AUTO = 0
 SEASON_WINTER = 3
 SEASON_SUMMER = 5
+
+# WEB (247): restrictions set by a supervisor
+WEB_LED_OFF = 1 << 0
+WEB_FORCED_OFF = 1 << 1
+WEB_NO_PROGRAM_CHANGE = 1 << 2
+WEB_NO_STANDBY_CHANGE = 1 << 3
+WEB_NO_EXTREMES = 1 << 4
+WEB_SETPOINT_LIMITS = 1 << 5
+WEB_KEYS_DISABLED = 1 << 6
+WEB_BYPASSED = 1 << 7
 
 # OUT (9)
 OUT_EV1 = 1 << 0
@@ -181,6 +195,16 @@ class ClimaData:
         """Unit not in standby."""
         standby = self._flag(REG_PRG, PRG_STANDBY)
         return None if standby is None else not standby
+
+    @property
+    def unit_standby(self) -> bool | None:
+        """Standby as reported by the board status (the real state)."""
+        return self._flag(REG_STAT, STAT_STANDBY)
+
+    @property
+    def forced_off(self) -> bool | None:
+        """Supervisor 'forced off' restriction (register 247, bit 1)."""
+        return self._flag(REG_WEB, WEB_FORCED_OFF)
 
     @property
     def program(self) -> str | None:
@@ -351,3 +375,11 @@ class ClimaClient:
                 f"Set point {value} outside the unit limits {low / 10}-{high / 10} °C"
             )
         await self.modbus.write_register(self.unit, REG_SETPOINT, raw)
+
+    async def async_clear_forced_off(self) -> None:
+        """Clear the supervisor 'forced off' flag (register 247, bit 1)."""
+        current = (await self.modbus.read_holding(self.unit, REG_WEB))[0]
+        if current & WEB_FORCED_OFF:
+            await self.modbus.write_register(
+                self.unit, REG_WEB, current & ~WEB_FORCED_OFF
+            )
