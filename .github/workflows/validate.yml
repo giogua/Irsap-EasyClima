@@ -9,7 +9,7 @@ jobs:
   hassfest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
@@ -23,10 +23,11 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
       - run: pip install pytest-homeassistant-custom-component
-      - run: pytest -q tests/test_api.py
-      - run: pytest -q -p no:cacheprovider -o asyncio_mode=auto tests/ha
+      # The Home Assistant plugin blocks sockets: the client tests need them.
+      - run: pytest -q -p no:homeassistant -p no:pytest_homeassistant_custom_component tests/test_api.py tests/test_fan.py
+      - run: PYTHONPATH=. pytest -q -p no:cacheprovider -o asyncio_mode=auto tests/ha
