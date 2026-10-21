@@ -137,5 +137,43 @@
         "name": "Velocità ventilatore supervisore"
       }
     }
+  },
+  "services": {
+    "read_register": {
+      "name": "Leggi registro",
+      "description": "Legge registri holding grezzi dall'unità (diagnostica).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Unità",
+          "description": "Unità CLIMA; facoltativa se ne è configurata una sola."
+        },
+        "address": {
+          "name": "Indirizzo",
+          "description": "Indirizzo del primo registro."
+        },
+        "count": {
+          "name": "Quantità",
+          "description": "Numero di registri da leggere."
+        }
+      }
+    },
+    "write_register": {
+      "name": "Scrivi registro",
+      "description": "Scrive un registro holding grezzo (diagnostica). Valori errati possono modificare la configurazione dell'unità.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Unità",
+          "description": "Unità CLIMA; facoltativa se ne è configurata una sola."
+        },
+        "address": {
+          "name": "Indirizzo",
+          "description": "Indirizzo del registro."
+        },
+        "value": {
+          "name": "Valore",
+          "description": "Valore grezzo a 16 bit."
+        }
+      }
+    }
   }
 }

@@ -61,5 +61,13 @@
         }
       }
     }
+  },
+  "services": {
+    "read_register": {
+      "service": "mdi:database-search"
+    },
+    "write_register": {
+      "service": "mdi:database-edit"
+    }
   }
 }

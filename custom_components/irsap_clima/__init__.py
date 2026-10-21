@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
 from .api import ClimaClient
-from .const import CONF_UNIT, DEFAULT_PORT, DEFAULT_UNIT
+from .const import CONF_UNIT, DEFAULT_PORT, DEFAULT_UNIT, DOMAIN
 from .coordinator import IrsapClimaConfigEntry, IrsapClimaCoordinator
 from .modbus import ModbusTcpClient
+from .services import async_setup_services
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
@@ -18,6 +23,12 @@ PLATFORMS: list[Platform] = [
     Platform.SENSOR,
     Platform.SWITCH,
 ]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register the services."""
+    async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: IrsapClimaConfigEntry) -> bool:

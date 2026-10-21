@@ -137,5 +137,43 @@
         "name": "Supervisor fan speed"
       }
     }
+  },
+  "services": {
+    "read_register": {
+      "name": "Read register",
+      "description": "Reads raw holding registers from the unit (diagnostics).",
+      "fields": {
+        "config_entry_id": {
+          "name": "Unit",
+          "description": "CLIMA unit; optional when only one is configured."
+        },
+        "address": {
+          "name": "Address",
+          "description": "First register address."
+        },
+        "count": {
+          "name": "Count",
+          "description": "Number of registers to read."
+        }
+      }
+    },
+    "write_register": {
+      "name": "Write register",
+      "description": "Writes a raw holding register (diagnostics). Wrong values can change the unit configuration.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Unit",
+          "description": "CLIMA unit; optional when only one is configured."
+        },
+        "address": {
+          "name": "Address",
+          "description": "Register address."
+        },
+        "value": {
+          "name": "Value",
+          "description": "Raw 16-bit value."
+        }
+      }
+    }
   }
 }

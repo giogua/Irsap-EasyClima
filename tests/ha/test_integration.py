@@ -122,3 +122,19 @@ async def test_errors(hass: HomeAssistant, fake: FakeClima) -> None:
         {CONF_HOST: "127.0.0.1", CONF_PORT: 1, "unit_id": 1, CONF_NAME: "CLIMA"},
     )
     assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_register_services(hass: HomeAssistant, fake: FakeClima) -> None:
+    await _setup(hass, fake)
+    await hass.services.async_call(
+        DOMAIN, "write_register", {"address": 224, "value": 0}, blocking=True
+    )
+    assert fake.regs[224] == 0
+    resp = await hass.services.async_call(
+        DOMAIN,
+        "read_register",
+        {"address": 267, "count": 2},
+        blocking=True,
+        return_response=True,
+    )
+    assert resp == {"registers": {"267": fake.regs[267], "268": fake.regs[268]}}
