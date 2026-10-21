@@ -9,11 +9,18 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .api import ClimaClient
 from .const import (
+    CONF_FRAMING,
     CONF_SCAN_INTERVAL,
     CONF_UNIT,
+    DEFAULT_FRAMING,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
@@ -22,13 +29,30 @@ from .const import (
     MIN_SCAN_INTERVAL,
 )
 from .coordinator import IrsapClimaConfigEntry
-from .modbus import ModbusConnectionError, ModbusError, ModbusTcpClient
+from .modbus import (
+    FRAMING_RTU,
+    FRAMING_TCP,
+    ModbusConnectionError,
+    ModbusError,
+    ModbusTcpClient,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def _validate(host: str, port: int, unit: int) -> dict[str, str]:
-    client = ClimaClient(ModbusTcpClient(host, port, retries=1), unit)
+FRAMING_SELECTOR = SelectSelector(
+    SelectSelectorConfig(
+        options=[FRAMING_TCP, FRAMING_RTU],
+        mode=SelectSelectorMode.LIST,
+        translation_key=CONF_FRAMING,
+    )
+)
+
+
+async def _validate(
+    host: str, port: int, unit: int, framing: str = DEFAULT_FRAMING
+) -> dict[str, str]:
+    client = ClimaClient(ModbusTcpClient(host, port, retries=1, framing=framing), unit)
     try:
         await client.async_validate()
     except ModbusConnectionError as err:
@@ -37,7 +61,7 @@ async def _validate(host: str, port: int, unit: int) -> dict[str, str]:
     except ModbusError as err:
         _LOGGER.warning("CLIMA setup: %s", err)
         return {"base": "no_response"}
-    except Exception:  # noqa: BLE001
+    except Exception:
         _LOGGER.exception("Unexpected error validating %s:%s", host, port)
         return {"base": "unknown"}
     finally:
@@ -59,13 +83,19 @@ class IrsapClimaConfigFlow(ConfigFlow, domain=DOMAIN):
             host = user_input[CONF_HOST].strip()
             port = int(user_input[CONF_PORT])
             unit = int(user_input[CONF_UNIT])
+            framing = user_input.get(CONF_FRAMING, DEFAULT_FRAMING)
             await self.async_set_unique_id(f"{host}:{port}:{unit}")
             self._abort_if_unique_id_configured()
-            errors = await _validate(host, port, unit)
+            errors = await _validate(host, port, unit, framing)
             if not errors:
                 return self.async_create_entry(
                     title=user_input[CONF_NAME],
-                    data={CONF_HOST: host, CONF_PORT: port, CONF_UNIT: unit},
+                    data={
+                        CONF_HOST: host,
+                        CONF_PORT: port,
+                        CONF_UNIT: unit,
+                        CONF_FRAMING: framing,
+                    },
                 )
         schema = vol.Schema(
             {
@@ -76,6 +106,7 @@ class IrsapClimaConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_UNIT, default=DEFAULT_UNIT): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=247)
                 ),
+                vol.Required(CONF_FRAMING, default=DEFAULT_FRAMING): FRAMING_SELECTOR,
                 vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
             }
         )
@@ -95,16 +126,26 @@ class IrsapClimaConfigFlow(ConfigFlow, domain=DOMAIN):
             host = user_input[CONF_HOST].strip()
             port = int(user_input[CONF_PORT])
             unit = int(user_input[CONF_UNIT])
+            framing = user_input.get(CONF_FRAMING, DEFAULT_FRAMING)
             new_id = f"{host}:{port}:{unit}"
             await self.async_set_unique_id(new_id)
             if new_id != entry.unique_id:
                 self._abort_if_unique_id_configured()
-            errors = await _validate(host, port, unit)
+            coordinator = getattr(entry, "runtime_data", None)
+            if new_id == entry.unique_id and coordinator is not None:
+                # Same gateway: release its (single) connection before testing.
+                await coordinator.client.async_close()
+            errors = await _validate(host, port, unit, framing)
             if not errors:
                 return self.async_update_reload_and_abort(
                     entry,
                     unique_id=new_id,
-                    data_updates={CONF_HOST: host, CONF_PORT: port, CONF_UNIT: unit},
+                    data_updates={
+                        CONF_HOST: host,
+                        CONF_PORT: port,
+                        CONF_UNIT: unit,
+                        CONF_FRAMING: framing,
+                    },
                 )
         return self.async_show_form(
             step_id="reconfigure",
@@ -117,6 +158,10 @@ class IrsapClimaConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_UNIT, default=entry.data[CONF_UNIT]): vol.All(
                         vol.Coerce(int), vol.Range(min=1, max=247)
                     ),
+                    vol.Required(
+                        CONF_FRAMING,
+                        default=entry.data.get(CONF_FRAMING, DEFAULT_FRAMING),
+                    ): FRAMING_SELECTOR,
                 }
             ),
             errors=errors,

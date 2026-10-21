@@ -21,11 +21,14 @@ modbus = importlib.import_module("irsap_clima_pkg.modbus")
 api = importlib.import_module("irsap_clima_pkg.api")
 
 
-@pytest.fixture
-async def env():
+@pytest.fixture(params=["tcp", "rtu"])
+async def env(request):
     fake = FakeClima()
+    fake.framing = request.param
     await fake.start()
-    client = api.ClimaClient(modbus.ModbusTcpClient("127.0.0.1", fake.port), 1)
+    client = api.ClimaClient(
+        modbus.ModbusTcpClient("127.0.0.1", fake.port, framing=request.param), 1
+    )
     yield fake, client
     await client.async_close()
     await fake.stop()
@@ -96,8 +99,20 @@ async def test_alarms(env):
 
 async def test_wrong_unit_and_unreachable(env):
     fake, client = env
-    other = api.ClimaClient(modbus.ModbusTcpClient("127.0.0.1", fake.port), 7)
-    with pytest.raises(modbus.ModbusExceptionResponse):
+    other = api.ClimaClient(
+        modbus.ModbusTcpClient(
+            "127.0.0.1", fake.port, timeout=0.5, retries=0, framing=fake.framing
+        ),
+        7,
+    )
+    # A Modbus TCP gateway answers "target failed to respond"; on a
+    # transparent link the bus simply stays silent.
+    expected = (
+        modbus.ModbusExceptionResponse
+        if fake.framing == "tcp"
+        else modbus.ModbusTimeoutError
+    )
+    with pytest.raises(expected):
         await other.async_validate()
     await other.async_close()
     dead = api.ClimaClient(
@@ -116,11 +131,13 @@ async def test_reconnect_after_server_restart(env):
     assert (await client.async_get_data()).air_temperature == 19.9
 
 
-async def test_timeout_keeps_connection():
+@pytest.mark.parametrize("framing", ["tcp", "rtu"])
+async def test_timeout_keeps_connection(framing):
     fake = FakeClima()
+    fake.framing = framing
     await fake.start()
     client = api.ClimaClient(
-        modbus.ModbusTcpClient("127.0.0.1", fake.port, timeout=1), 1
+        modbus.ModbusTcpClient("127.0.0.1", fake.port, timeout=1, framing=framing), 1
     )
     try:
         await client.async_get_data()

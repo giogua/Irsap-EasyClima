@@ -6,6 +6,15 @@ import asyncio
 import struct
 
 
+def _crc16(data: bytes) -> int:
+    crc = 0xFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+    return crc
+
+
 class FakeClima:
     """Holding registers + a Modbus TCP server (functions 03 and 06)."""
 
@@ -39,6 +48,7 @@ class FakeClima:
         self.late_reply = (
             False  # answer dropped requests late (after the client timeout)
         )
+        self.framing = "tcp"  # or "rtu": raw RTU frames tunnelled over TCP
         self.server: asyncio.base_events.Server | None = None
         self.port = 0
         self._writers: set[asyncio.StreamWriter] = set()
@@ -60,6 +70,9 @@ class FakeClima:
         self._writers.add(writer)
         self.connections += 1
         try:
+            if self.framing == "rtu":
+                await self._handle_rtu(reader, writer)
+                return
             while True:
                 header = await reader.readexactly(7)
                 tid, proto, length, unit = struct.unpack(">HHHB", header)
@@ -80,6 +93,24 @@ class FakeClima:
         finally:
             self._writers.discard(writer)
             writer.close()
+
+    async def _handle_rtu(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        while True:
+            frame = await reader.readexactly(8)  # functions 03/06 only
+            if _crc16(frame[:-2]) != struct.unpack("<H", frame[-2:])[0]:
+                continue
+            if frame[0] != self.unit:
+                continue  # another unit on the bus: silence
+            resp = bytes([self.unit]) + self._process(frame[1:-2])
+            if self.drop_next:
+                self.drop_next -= 1
+                if not self.late_reply:
+                    continue
+                await asyncio.sleep(1.5)
+            writer.write(resp + struct.pack("<H", _crc16(resp)))
+            await writer.drain()
 
     def _process(self, pdu: bytes) -> bytes:
         fc = pdu[0]

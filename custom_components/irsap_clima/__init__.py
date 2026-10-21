@@ -8,7 +8,14 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .api import ClimaClient
-from .const import CONF_UNIT, DEFAULT_PORT, DEFAULT_UNIT, DOMAIN
+from .const import (
+    CONF_FRAMING,
+    CONF_UNIT,
+    DEFAULT_FRAMING,
+    DEFAULT_PORT,
+    DEFAULT_UNIT,
+    DOMAIN,
+)
 from .coordinator import IrsapClimaConfigEntry, IrsapClimaCoordinator
 from .modbus import ModbusTcpClient
 from .services import async_setup_services
@@ -34,7 +41,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: IrsapClimaConfigEntry) -> bool:
     """Set up a CLIMA unit from a config entry."""
     modbus = ModbusTcpClient(
-        entry.data[CONF_HOST], entry.data.get(CONF_PORT, DEFAULT_PORT)
+        entry.data[CONF_HOST],
+        entry.data.get(CONF_PORT, DEFAULT_PORT),
+        framing=entry.data.get(CONF_FRAMING, DEFAULT_FRAMING),
     )
     client = ClimaClient(modbus, entry.data.get(CONF_UNIT, DEFAULT_UNIT))
     coordinator = IrsapClimaCoordinator(hass, entry, client)

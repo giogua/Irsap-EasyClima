@@ -138,3 +138,21 @@ async def test_register_services(hass: HomeAssistant, fake: FakeClima) -> None:
         return_response=True,
     )
     assert resp == {"registers": {"267": fake.regs[267], "268": fake.regs[268]}}
+
+
+async def test_reconfigure_to_rtu(hass: HomeAssistant, fake: FakeClima) -> None:
+    entry_id = await _setup(hass, fake)
+    entry = hass.config_entries.async_get_entry(entry_id)
+    fake.framing = "rtu"  # new connections speak RTU over TCP
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry_id},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_HOST: "127.0.0.1", CONF_PORT: fake.port, "unit_id": 1, "framing": "rtu"},
+    )
+    assert result["reason"] == "reconfigure_successful", result
+    await hass.async_block_till_done()
+    assert entry.data["framing"] == "rtu"
+    assert hass.states.get("climate.clima").state != "unavailable"

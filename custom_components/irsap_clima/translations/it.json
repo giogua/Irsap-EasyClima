@@ -8,11 +8,13 @@
           "host": "Indirizzo IP del gateway",
           "port": "Porta",
           "unit_id": "Indirizzo Modbus dell'unità",
-          "name": "Nome"
+          "name": "Nome",
+          "framing": "Protocollo del gateway"
         },
         "data_description": {
           "port": "502 per il Modbus TCP standard; verifica la configurazione del gateway (es. 4196 sui Waveshare).",
-          "unit_id": "Predefinito 1"
+          "unit_id": "Predefinito 1",
+          "framing": "Modbus TCP: protocollo del gateway \"Modbus TCP to RTU\". RTU su TCP: protocollo \"None\" (trasparente), più affidabile sui gateway Waveshare."
         }
       },
       "reconfigure": {
@@ -20,7 +22,11 @@
         "data": {
           "host": "Indirizzo IP del gateway",
           "port": "Porta",
-          "unit_id": "Indirizzo Modbus dell'unità"
+          "unit_id": "Indirizzo Modbus dell'unità",
+          "framing": "Protocollo del gateway"
+        },
+        "data_description": {
+          "framing": "Modbus TCP: protocollo del gateway \"Modbus TCP to RTU\". RTU su TCP: protocollo \"None\" (trasparente), più affidabile sui gateway Waveshare."
         }
       }
     },
@@ -173,6 +179,14 @@
           "name": "Valore",
           "description": "Valore grezzo a 16 bit."
         }
+      }
+    }
+  },
+  "selector": {
+    "framing": {
+      "options": {
+        "tcp": "Modbus TCP (il gateway converte in RTU)",
+        "rtu": "Modbus RTU su TCP (gateway trasparente)"
       }
     }
   }

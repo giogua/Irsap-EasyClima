@@ -13,6 +13,8 @@ DEFAULT_PORT: Final = 502
 DEFAULT_UNIT: Final = 1
 
 CONF_UNIT: Final = "unit_id"
+CONF_FRAMING: Final = "framing"
+DEFAULT_FRAMING: Final = "tcp"
 CONF_SCAN_INTERVAL: Final = "scan_interval"
 DEFAULT_SCAN_INTERVAL: Final = 30
 MIN_SCAN_INTERVAL: Final = 10

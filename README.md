@@ -32,7 +32,10 @@ Entity names are translated (English, Italian).
 - Move the jumper on the CLIMA board from **ASCII** to **RTU**.
 - Connect the board terminals A/B to the gateway RS485 A/B (shielded twisted pair). Do not power the gateway from the board's panel supply.
 - Without the CNT panel, the regulation uses the **AIR probe** on the return air (connector H2 on the board): it must be connected.
-- Gateway (tested with a Waveshare *RS485 TO POE ETH (B)*): protocol **Modbus TCP to RTU**, **9600 8N1**, TCP server. Note the TCP port shown by the gateway (Waveshare default 4196).
+- Gateway (tested with a Waveshare *RS485 TO POE ETH (B)*): **9600 8N1**, TCP server; note the TCP port (Waveshare default 4196). Two gateway protocols are supported, chosen in the integration setup:
+  - **Modbus RTU over TCP** (recommended for Waveshare): gateway protocol **None** (transparent). The integration sends raw RTU frames with CRC; the gateway only forwards bytes.
+  - **Modbus TCP**: gateway protocol **Modbus TCP to RTU**. On the Waveshare (firmware V1.452) this mode was seen to reset the connection and then refuse new ones for minutes.
+- These gateways accept one client at a time: close Vircom or any other tool connected to the same port while Home Assistant is running.
 
 ## Installation (HACS)
 

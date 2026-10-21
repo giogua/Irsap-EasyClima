@@ -1,7 +1,9 @@
-"""Minimal asyncio Modbus TCP client (functions 03 and 06 only).
+"""Minimal asyncio Modbus client over TCP (functions 03 and 06 only).
 
-The unit is reached through an RS485 <-> Ethernet gateway running in
-"Modbus TCP <-> RTU" mode, so plain Modbus TCP framing (MBAP header) is used.
+The unit is reached through an RS485 <-> Ethernet gateway, either in
+"Modbus TCP <-> RTU" mode (framing "tcp": MBAP header, the gateway converts)
+or in transparent mode (framing "rtu": raw RTU frames with CRC are tunnelled
+over the TCP connection and the gateway only forwards bytes).
 The connection is kept open and is closed only on socket errors: cheap
 gateways often accept a single client and refuse new connections for minutes
 after one is closed.
@@ -53,6 +55,20 @@ class ModbusExceptionResponse(ModbusError):
         )
 
 
+FRAMING_TCP = "tcp"
+FRAMING_RTU = "rtu"
+
+
+def crc16(data: bytes) -> int:
+    """Modbus RTU CRC16."""
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+    return crc
+
+
 class ModbusTcpClient:
     """One persistent connection, one request at a time."""
 
@@ -63,9 +79,11 @@ class ModbusTcpClient:
         timeout: float = 3.0,
         retries: int = 2,
         inter_request_delay: float = 0.05,
+        framing: str = FRAMING_TCP,
     ) -> None:
         self.host = host
         self.port = port
+        self.framing = framing
         self._timeout = timeout
         self._retries = retries
         self._delay = inter_request_delay
@@ -76,11 +94,16 @@ class ModbusTcpClient:
         self._dirty = False  # a request timed out: late bytes may be pending
 
     async def _drain(self) -> None:
-        """Discard bytes left over by a request that timed out."""
+        """Discard bytes left over by a request that timed out.
+
+        RTU frames carry no transaction id, so a late answer could be taken
+        for the answer to the next request: wait longer for it to arrive.
+        """
         assert self._reader is not None
+        quiet = self._timeout if self.framing == FRAMING_RTU else 0.2
         while True:
             try:
-                data = await asyncio.wait_for(self._reader.read(512), 0.2)
+                data = await asyncio.wait_for(self._reader.read(512), quiet)
             except TimeoutError:
                 break
             if not data:  # connection closed by the gateway
@@ -121,22 +144,11 @@ class ModbusTcpClient:
                 await self._connect()
             connected = True
             assert self._reader is not None and self._writer is not None
-            self._tid = (self._tid + 1) & 0xFFFF
-            frame = struct.pack(">HHHB", self._tid, 0, len(pdu) + 1, unit) + pdu
             try:
-                self._writer.write(frame)
-                await self._writer.drain()
-                while True:
-                    header = await asyncio.wait_for(
-                        self._reader.readexactly(7), self._timeout
-                    )
-                    tid, proto, length, _unit = struct.unpack(">HHHB", header)
-                    body = await asyncio.wait_for(
-                        self._reader.readexactly(length - 1), self._timeout
-                    )
-                    if tid == self._tid and proto == 0:
-                        break
-                    _LOGGER.debug("Discarding stale Modbus response tid=%s", tid)
+                if self.framing == FRAMING_RTU:
+                    body = await self._exchange_rtu(unit, pdu)
+                else:
+                    body = await self._exchange_tcp(unit, pdu)
             except TimeoutError as err:
                 # The gateway is still connected but the unit did not answer
                 # (or answered late).  Keep the socket: some gateways accept a
@@ -163,6 +175,46 @@ class ModbusTcpClient:
             f"No answer from unit {unit} via {self.host}:{self.port}: "
             f"{type(last_err).__name__} {last_err}"
         )
+
+    async def _exchange_tcp(self, unit: int, pdu: bytes) -> bytes:
+        assert self._reader is not None and self._writer is not None
+        self._tid = (self._tid + 1) & 0xFFFF
+        frame = struct.pack(">HHHB", self._tid, 0, len(pdu) + 1, unit) + pdu
+        self._writer.write(frame)
+        await self._writer.drain()
+        while True:
+            header = await asyncio.wait_for(self._reader.readexactly(7), self._timeout)
+            tid, proto, length, _unit = struct.unpack(">HHHB", header)
+            body = await asyncio.wait_for(
+                self._reader.readexactly(length - 1), self._timeout
+            )
+            if tid == self._tid and proto == 0:
+                return body
+            _LOGGER.debug("Discarding stale Modbus response tid=%s", tid)
+
+    async def _exchange_rtu(self, unit: int, pdu: bytes) -> bytes:
+        """Send a raw RTU frame and read the answer, validated by its CRC."""
+        assert self._reader is not None and self._writer is not None
+        frame = bytes([unit]) + pdu
+        self._writer.write(frame + struct.pack("<H", crc16(frame)))
+        await self._writer.drain()
+
+        async def read(n: int) -> bytes:
+            return await asyncio.wait_for(self._reader.readexactly(n), self._timeout)
+
+        head = await read(2)
+        if head[1] & 0x80:
+            rest = await read(3)  # exception code + CRC
+        elif head[1] == FC_READ_HOLDING:
+            count = await read(1)
+            rest = count + await read(count[0] + 2)
+        else:
+            rest = await read(6)  # write echo: address, value, CRC
+        answer = head + rest
+        if crc16(answer[:-2]) != struct.unpack("<H", answer[-2:])[0] or head[0] != unit:
+            # Garbage or a late answer to an earlier request: resynchronise.
+            raise TimeoutError(f"Invalid RTU frame {answer.hex(' ')}")
+        return answer[1:-2]
 
     async def read_holding(self, unit: int, address: int, count: int = 1) -> list[int]:
         """Read holding registers (function 03)."""
