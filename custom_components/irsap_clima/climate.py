@@ -114,6 +114,7 @@ class IrsapClimaThermostat(IrsapClimaEntity, ClimateEntity):
             "effective_setpoint": data.setpoint_effective,
             "unit_standby": data.unit_standby,
             "forced_off": data.forced_off,
+            "fan_target": data.supervisor_fan,
         }
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
@@ -148,5 +149,5 @@ class IrsapClimaThermostat(IrsapClimaEntity, ClimateEntity):
             await self.coordinator.async_refresh()
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
-        """Set the fan program."""
+        """Set the fan program; the next refresh applies the matching speed."""
         await self._async_command(self.coordinator.client.async_set_program, fan_mode)

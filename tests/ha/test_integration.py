@@ -239,3 +239,22 @@ async def test_migrate_address_keyed_registry(
     assert [e.entity_id for e in climate] == ["climate.clima_original"]
     assert climate[0].unique_id == f"{entry.entry_id}_climate"
     assert hass.states.get("climate.clima_original").state != "unavailable"
+
+
+async def test_fan_regulation(hass: HomeAssistant, fake: FakeClima) -> None:
+    # fake: winter, heating, air 21.5 over set point 21.0 -> no demand
+    await _setup(hass, fake)
+    assert fake.regs[267] == fake.regs[268] == 20  # auto minimum
+    await hass.services.async_call(
+        "climate",
+        "set_fan_mode",
+        {"entity_id": "climate.clima", "fan_mode": "max"},
+        blocking=True,
+    )
+    assert fake.regs[201] & 0b11 == 3
+    assert fake.regs[267] == fake.regs[268] == 100
+    await hass.services.async_call(
+        "climate", "turn_off", {"entity_id": "climate.clima"}, blocking=True
+    )
+    assert fake.regs[267] == fake.regs[268] == 20
+    assert hass.states.get("climate.clima").attributes["fan_target"] == 20

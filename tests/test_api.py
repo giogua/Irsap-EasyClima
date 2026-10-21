@@ -165,3 +165,12 @@ async def test_forced_off(env):
     assert data.unit_standby is True
     await client.async_clear_forced_off()
     assert fake.regs[247] == 0
+
+
+async def test_power_on_sets_supervisor_mode(env):
+    fake, client = env
+    fake.regs[224] = 2
+    fake.regs[201] |= 0x80
+    await client.async_set_power(True)
+    assert fake.regs[224] == 0
+    assert not fake.regs[201] & 0x80

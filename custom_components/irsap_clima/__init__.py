@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
@@ -12,9 +14,11 @@ from homeassistant.helpers.typing import ConfigType
 from .api import ClimaClient
 from .const import (
     CONF_FRAMING,
+    CONF_SCAN_INTERVAL,
     CONF_UNIT,
     DEFAULT_FRAMING,
     DEFAULT_PORT,
+    DEFAULT_SCAN_INTERVAL,
     DEFAULT_UNIT,
     DOMAIN,
 )
@@ -27,7 +31,6 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.CLIMATE,
-    Platform.NUMBER,
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
@@ -49,6 +52,10 @@ def _migrate_registry(hass: HomeAssistant, entry: IrsapClimaConfigEntry) -> None
     """
     new_uid = entry.entry_id
     ent_reg = er.async_get(hass)
+    # 0.3.0-0.3.3: manual supervisor fan speed, now regulated automatically
+    for ent in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+        if ent.domain == "number" and ent.unique_id.endswith("_supervisor_fan"):
+            ent_reg.async_remove(ent.entity_id)
     entities = sorted(
         er.async_entries_for_config_entry(ent_reg, entry.entry_id),
         key=lambda e: e.created_at,
@@ -117,5 +124,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: IrsapClimaConfigEntry) 
 async def _async_update_listener(
     hass: HomeAssistant, entry: IrsapClimaConfigEntry
 ) -> None:
-    """Reload when options change."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Apply new options without reconnecting (fan speeds are read live)."""
+    coordinator = entry.runtime_data
+    coordinator.update_interval = timedelta(
+        seconds=entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    )
+    await coordinator.async_request_refresh()

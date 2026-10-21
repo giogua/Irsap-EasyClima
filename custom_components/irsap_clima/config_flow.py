@@ -17,9 +17,21 @@ from homeassistant.helpers.selector import (
 
 from .api import ClimaClient
 from .const import (
+    CONF_FAN_AUTO_BAND,
+    CONF_FAN_AUTO_MAX,
+    CONF_FAN_AUTO_MIN,
+    CONF_FAN_MAX,
+    CONF_FAN_NIGHT,
+    CONF_FAN_SILENT,
     CONF_FRAMING,
     CONF_SCAN_INTERVAL,
     CONF_UNIT,
+    DEFAULT_FAN_AUTO_BAND,
+    DEFAULT_FAN_AUTO_MAX,
+    DEFAULT_FAN_AUTO_MIN,
+    DEFAULT_FAN_MAX,
+    DEFAULT_FAN_NIGHT,
+    DEFAULT_FAN_SILENT,
     DEFAULT_FRAMING,
     DEFAULT_NAME,
     DEFAULT_PORT,
@@ -174,8 +186,11 @@ class IrsapClimaConfigFlow(ConfigFlow, domain=DOMAIN):
         return IrsapClimaOptionsFlow()
 
 
+PERCENT = vol.All(vol.Coerce(int), vol.Range(min=10, max=100))
+
+
 class IrsapClimaOptionsFlow(OptionsFlow):
-    """Polling interval."""
+    """Polling interval and fan speeds."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -183,18 +198,26 @@ class IrsapClimaOptionsFlow(OptionsFlow):
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(data=user_input)
+        opts = self.config_entry.options
+
+        def field(key: str, default: Any) -> vol.Required:
+            return vol.Required(key, default=opts.get(key, default))
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        CONF_SCAN_INTERVAL,
-                        default=self.config_entry.options.get(
-                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-                        ),
-                    ): vol.All(
+                    field(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL): vol.All(
                         vol.Coerce(int), vol.Range(min=MIN_SCAN_INTERVAL, max=3600)
-                    )
+                    ),
+                    field(CONF_FAN_AUTO_MIN, DEFAULT_FAN_AUTO_MIN): PERCENT,
+                    field(CONF_FAN_AUTO_MAX, DEFAULT_FAN_AUTO_MAX): PERCENT,
+                    field(CONF_FAN_AUTO_BAND, DEFAULT_FAN_AUTO_BAND): vol.All(
+                        vol.Coerce(float), vol.Range(min=0.5, max=10)
+                    ),
+                    field(CONF_FAN_SILENT, DEFAULT_FAN_SILENT): PERCENT,
+                    field(CONF_FAN_NIGHT, DEFAULT_FAN_NIGHT): PERCENT,
+                    field(CONF_FAN_MAX, DEFAULT_FAN_MAX): PERCENT,
                 }
             ),
         )

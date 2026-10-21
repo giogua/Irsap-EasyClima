@@ -13,7 +13,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
-    REVOLUTIONS_PER_MINUTE,
+    PERCENTAGE,
     EntityCategory,
     UnitOfTemperature,
     UnitOfTime,
@@ -74,7 +74,7 @@ SENSORS: tuple[IrsapClimaSensorDescription, ...] = (
     IrsapClimaSensorDescription(
         key="fan_speed",
         translation_key="fan_speed",
-        native_unit_of_measurement=REVOLUTIONS_PER_MINUTE,
+        native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda d: d.fan_speed,
     ),

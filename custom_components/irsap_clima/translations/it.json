@@ -43,10 +43,17 @@
   "options": {
     "step": {
       "init": {
-        "title": "Aggiornamento",
+        "title": "Opzioni",
         "data": {
-          "scan_interval": "Intervallo di aggiornamento (s)"
-        }
+          "scan_interval": "Intervallo di aggiornamento (s)",
+          "fan_auto_min": "Ventola auto: velocità minima (%)",
+          "fan_auto_max": "Ventola auto: velocità massima (%)",
+          "fan_auto_band": "Ventola auto: distanza dal setpoint per la massima (°C)",
+          "fan_silent": "Velocità ventola silenzioso (%)",
+          "fan_night": "Velocità ventola notte (%)",
+          "fan_max": "Velocità ventola max (%)"
+        },
+        "description": "La macchina decide quando far girare la ventola (richiesta termica, campionamento dell'aria); queste velocità si usano mentre gira. In auto la velocità cresce dalla minima, vicino al setpoint, fino alla massima."
       }
     }
   },
@@ -136,11 +143,6 @@
           "summer": "Estate (raffrescamento)",
           "auto": "Automatica"
         }
-      }
-    },
-    "number": {
-      "supervisor_fan": {
-        "name": "Velocità ventilatore supervisore"
       }
     }
   },

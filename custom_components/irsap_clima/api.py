@@ -26,7 +26,7 @@ REG_WATER_TEMP_H2 = 1  # T2, x0.1 °C
 REG_WATER_TEMP_H4 = 2  # T3, x0.1 °C (4-pipe units only)
 REG_SETPOINT_REAL = 8  # x0.1 °C, effective set point
 REG_OUT = 9  # relay outputs (bit field)
-REG_MOTOR_SPEED = 15  # requested fan speed, rpm
+REG_MOTOR_SPEED = 15  # fan speed, % (0 when stopped)
 REG_STAT = 104  # status (bit field)
 REG_ALARMS = 105  # alarms (bit field)
 # Read/write
@@ -39,7 +39,8 @@ REG_SEASON = 233  # 0 auto, 3 winter (heating), 5 summer (cooling)
 REG_PRESENCE = 209  # E_SAVING: presence contact offset / stand-by, x0.1 K
 REG_WEB = 247  # supervisor restriction flags (bit field)
 # Registers used by the Irsap EasyClima Multizona supervisor (from a bus capture):
-REG_SUP_224 = 224  # always written 0 by the supervisor (meaning unknown)
+REG_SUP_224 = 224  # 0 = fan speed from the supervisor (267/268); the unit
+# stays in standby with other values (2 found on a unit that had a CNT panel)
 REG_SUP_229 = 229  # read by the supervisor, 350 (meaning unknown)
 REG_FAN_A = 267  # fan speed %, written by the supervisor (100 when idle)
 REG_FAN_B = 268  # fan speed %, written together with 267
@@ -351,9 +352,22 @@ class ClimaClient:
             await self.modbus.write_register(self.unit, REG_PRG, new)
         return new
 
+    async def async_ensure_supervisor_mode(self) -> bool:
+        """Make the unit take the fan speed from the supervisor (224 = 0).
+
+        Returns True when the register had to be written.
+        """
+        if REG_SUP_224 in self._unsupported:
+            return False
+        if (await self.modbus.read_holding(self.unit, REG_SUP_224))[0] == 0:
+            return False
+        await self.modbus.write_register(self.unit, REG_SUP_224, 0)
+        return True
+
     async def async_set_power(self, on: bool) -> None:
         """Switch the unit on (normal operation) or to standby."""
         if on:
+            await self.async_ensure_supervisor_mode()
             await self._update_prg(clear_bits=PRG_STANDBY)
         else:
             await self._update_prg(set_bits=PRG_STANDBY)

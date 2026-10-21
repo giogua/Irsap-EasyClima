@@ -43,10 +43,17 @@
   "options": {
     "step": {
       "init": {
-        "title": "Polling",
+        "title": "Options",
         "data": {
-          "scan_interval": "Refresh interval (s)"
-        }
+          "scan_interval": "Refresh interval (s)",
+          "fan_auto_min": "Auto fan: minimum speed (%)",
+          "fan_auto_max": "Auto fan: maximum speed (%)",
+          "fan_auto_band": "Auto fan: distance from the set point for the maximum (°C)",
+          "fan_silent": "Silent fan speed (%)",
+          "fan_night": "Night fan speed (%)",
+          "fan_max": "Max fan speed (%)"
+        },
+        "description": "The unit decides when the fan runs (thermal demand, air sampling); these speeds are used while it runs. In auto the speed grows from the minimum, close to the set point, to the maximum."
       }
     }
   },
@@ -136,11 +143,6 @@
           "summer": "Summer (cooling)",
           "auto": "Automatic"
         }
-      }
-    },
-    "number": {
-      "supervisor_fan": {
-        "name": "Supervisor fan speed"
       }
     }
   },
