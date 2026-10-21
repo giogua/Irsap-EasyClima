@@ -156,3 +156,86 @@ async def test_reconfigure_to_rtu(hass: HomeAssistant, fake: FakeClima) -> None:
     await hass.async_block_till_done()
     assert entry.data["framing"] == "rtu"
     assert hass.states.get("climate.clima").state != "unavailable"
+
+
+async def test_address_change_keeps_device(
+    hass: HomeAssistant, fake: FakeClima
+) -> None:
+    entry_id = await _setup(hass, fake)
+    before = {
+        e.entity_id
+        for e in er.async_entries_for_config_entry(er.async_get(hass), entry_id)
+    }
+    other = FakeClima()  # the same unit behind a gateway with a new address
+    await other.start()
+    try:
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry_id},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_HOST: "127.0.0.1", CONF_PORT: other.port, "unit_id": 1},
+        )
+        assert result["reason"] == "reconfigure_successful", result
+        await hass.async_block_till_done()
+        devices = dr.async_entries_for_config_entry(dr.async_get(hass), entry_id)
+        assert len(devices) == 1
+        after = {
+            e.entity_id
+            for e in er.async_entries_for_config_entry(er.async_get(hass), entry_id)
+        }
+        assert after == before
+    finally:
+        await other.stop()
+
+
+async def test_migrate_address_keyed_registry(
+    hass: HomeAssistant, fake: FakeClima
+) -> None:
+    """Entries created by <= 0.3.2, including duplicates from an IP change."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="CLIMA",
+        unique_id=f"127.0.0.1:{fake.port}:1",
+        data={CONF_HOST: "127.0.0.1", CONF_PORT: fake.port, "unit_id": 1},
+    )
+    entry.add_to_hass(hass)
+    dev_reg, ent_reg = dr.async_get(hass), er.async_get(hass)
+    old_dev = dev_reg.async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={(DOMAIN, "10.0.0.1:4196:1")}
+    )
+    ent_reg.async_get_or_create(
+        "climate",
+        DOMAIN,
+        "10.0.0.1:4196:1_climate",
+        config_entry=entry,
+        device_id=old_dev.id,
+        suggested_object_id="clima_original",
+    )
+    dup_dev = dev_reg.async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={(DOMAIN, "10.0.0.2:4196:1")}
+    )
+    ent_reg.async_get_or_create(
+        "climate",
+        DOMAIN,
+        "10.0.0.2:4196:1_climate",
+        config_entry=entry,
+        device_id=dup_dev.id,
+        suggested_object_id="clima_original_2",
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    devices = dr.async_entries_for_config_entry(dev_reg, entry.entry_id)
+    assert [d.id for d in devices] == [old_dev.id]
+    climate = [
+        e
+        for e in er.async_entries_for_config_entry(ent_reg, entry.entry_id)
+        if e.domain == "climate"
+    ]
+    assert [e.entity_id for e in climate] == ["climate.clima_original"]
+    assert climate[0].unique_id == f"{entry.entry_id}_climate"
+    assert hass.states.get("climate.clima_original").state != "unavailable"

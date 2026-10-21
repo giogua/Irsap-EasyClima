@@ -23,7 +23,9 @@ class IrsapClimaEntity(CoordinatorEntity[IrsapClimaCoordinator]):
     def __init__(self, coordinator: IrsapClimaCoordinator, key: str) -> None:
         super().__init__(coordinator)
         entry = coordinator.config_entry
-        uid = entry.unique_id or entry.entry_id
+        # The config entry id never changes; the entry unique id follows the
+        # gateway address and would create a new device on every IP change.
+        uid = entry.entry_id
         self._attr_unique_id = f"{uid}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, uid)},

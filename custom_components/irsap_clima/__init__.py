@@ -5,6 +5,8 @@ from __future__ import annotations
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .api import ClimaClient
@@ -38,8 +40,54 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+def _migrate_registry(hass: HomeAssistant, entry: IrsapClimaConfigEntry) -> None:
+    """Key device and entities on the entry id instead of the gateway address.
+
+    Up to 0.3.2 they were keyed on "host:port:unit", so changing the gateway
+    address created a second device.  The oldest registry entries (those
+    holding the history) are kept and re-keyed, newer duplicates are removed.
+    """
+    new_uid = entry.entry_id
+    ent_reg = er.async_get(hass)
+    entities = sorted(
+        er.async_entries_for_config_entry(ent_reg, entry.entry_id),
+        key=lambda e: e.created_at,
+    )
+    taken = {e.unique_id for e in entities}
+    for ent in entities:
+        if ent.unique_id.startswith(f"{new_uid}_"):
+            continue
+        key = ent.unique_id.split("_", 1)[1] if "_" in ent.unique_id else None
+        target = f"{new_uid}_{key}"
+        if key is None:
+            continue
+        if target in taken:
+            ent_reg.async_remove(ent.entity_id)
+            continue
+        ent_reg.async_update_entity(ent.entity_id, new_unique_id=target)
+        taken.add(target)
+
+    dev_reg = dr.async_get(hass)
+    devices = sorted(
+        dr.async_entries_for_config_entry(dev_reg, entry.entry_id),
+        key=lambda d: d.created_at,
+    )
+    keep = next((d for d in devices if (DOMAIN, new_uid) in d.identifiers), None)
+    if keep is None and devices:
+        keep = devices[0]
+        dev_reg.async_update_device(keep.id, new_identifiers={(DOMAIN, new_uid)})
+    for device in devices:
+        if keep is not None and device.id != keep.id:
+            for ent in er.async_entries_for_device(
+                ent_reg, device.id, include_disabled_entities=True
+            ):
+                ent_reg.async_update_entity(ent.entity_id, device_id=keep.id)
+            dev_reg.async_remove_device(device.id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: IrsapClimaConfigEntry) -> bool:
     """Set up a CLIMA unit from a config entry."""
+    _migrate_registry(hass, entry)
     modbus = ModbusTcpClient(
         entry.data[CONF_HOST],
         entry.data.get(CONF_PORT, DEFAULT_PORT),
