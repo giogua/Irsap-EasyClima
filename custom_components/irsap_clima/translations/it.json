@@ -131,6 +131,11 @@
           "auto": "Automatica"
         }
       }
+    },
+    "number": {
+      "supervisor_fan": {
+        "name": "Velocità ventilatore supervisore"
+      }
     }
   }
 }

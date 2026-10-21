@@ -131,6 +131,11 @@
           "auto": "Automatic"
         }
       }
+    },
+    "number": {
+      "supervisor_fan": {
+        "name": "Supervisor fan speed"
+      }
     }
   }
 }

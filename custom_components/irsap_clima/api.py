@@ -38,6 +38,11 @@ REG_SETPOINT = 231  # x0.1 °C, absolute set point
 REG_SEASON = 233  # 0 auto, 3 winter (heating), 5 summer (cooling)
 REG_PRESENCE = 209  # E_SAVING: presence contact offset / stand-by, x0.1 K
 REG_WEB = 247  # supervisor restriction flags (bit field)
+# Registers used by the Irsap EasyClima Multizona supervisor (from a bus capture):
+REG_SUP_224 = 224  # always written 0 by the supervisor (meaning unknown)
+REG_SUP_229 = 229  # read by the supervisor, 350 (meaning unknown)
+REG_FAN_A = 267  # fan speed %, written by the supervisor (100 when idle)
+REG_FAN_B = 268  # fan speed %, written together with 267
 
 POLLED_REGISTERS = (
     REG_AIR_TEMP,
@@ -56,6 +61,10 @@ POLLED_REGISTERS = (
     REG_SEASON,
     REG_PRESENCE,
     REG_WEB,
+    REG_SUP_224,
+    REG_SUP_229,
+    REG_FAN_A,
+    REG_FAN_B,
 )
 
 # PRG (201)
@@ -205,6 +214,11 @@ class ClimaData:
     def forced_off(self) -> bool | None:
         """Supervisor 'forced off' restriction (register 247, bit 1)."""
         return self._flag(REG_WEB, WEB_FORCED_OFF)
+
+    @property
+    def supervisor_fan(self) -> int | None:
+        """Fan speed % commanded by a supervisor (registers 267/268)."""
+        return self.raw.get(REG_FAN_B, self.raw.get(REG_FAN_A))
 
     @property
     def program(self) -> str | None:
@@ -383,3 +397,9 @@ class ClimaClient:
             await self.modbus.write_register(
                 self.unit, REG_WEB, current & ~WEB_FORCED_OFF
             )
+
+    async def async_set_supervisor_fan(self, percent: int) -> None:
+        """Write the supervisor fan speed % (267 and 268, like the EasyClima panel)."""
+        value = max(0, min(100, int(percent)))
+        await self.modbus.write_register(self.unit, REG_FAN_A, value)
+        await self.modbus.write_register(self.unit, REG_FAN_B, value)
